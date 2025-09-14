@@ -1,7 +1,13 @@
 import torch
 import torch.nn as nn
 from torchvision import transforms
-
+from torchvision.datasets import ImageFolder
+from torch.utils.data import DataLoader
+transform = transforms.Compose([
+    transforms.Resize((64,64)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
+])
 
 class ASLCNN(nn.Module):
     def __init__(self, num_classes=29):
@@ -30,13 +36,21 @@ class ASLCNN(nn.Module):
 device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
 print("using: {device}")
 
+test_data = ImageFolder(root = r"E:\unknown\py scripts\datasets\database for asl project (cuda)\asl_alphabet_test", transform=transform)
+testloader  = DataLoader(test_data, batch_size=128,shuffle=True)
+
 model = ASLCNN(num_classes=29)
-model.load_state_dict(torch.load("asl_model.pth"))
+model.load_state_dict(torch.load('/workspaces/ASL_Image_Recognizer/asl_model_size_64x64.pth'))
 model.to(device)
 model.eval()  # switch to evaluation mode
+correct = 0
+total = 0
+with torch.no_grad():
+    for images,labels in testloader:
+        images,labels = images.to(device),labels.to(device)
+        outputs = model(images)
+        _, predicted = torch.max(outputs,1)
+        total+= labels.size(0)
+        correct = (predicted==labels).sum().item()
 
-transform = transforms.Compose([
-    transforms.Resize((64,64)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
-])
+print(f'Test Accuracy : {100*correct/total:.2f}%')
