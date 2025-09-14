@@ -16,31 +16,30 @@ class ASLCNN(nn.Module):
         self.conv2 = nn.Conv2d(32,64,3,1)
         self.pool= nn.MaxPool2d(2,2)
 
-        self.fc1 = None
-        self.fc2 = None
-        self.num_classes = num_classes
+        dummy_input = torch.zeros(1, 3, 64, 64)
+        out = self.pool(nn.ReLU()(self.conv1(dummy_input)))
+        out = self.pool(nn.ReLU()(self.conv2(out)))
+        flattened_size = out.numel()
+        
+        self.fc1 = nn.Linear(flattened_size, 128)
+        self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self,x):
         x = self.pool(nn.ReLU()(self.conv1(x)))
         x = self.pool(nn.ReLU()(self.conv2(x)))
         x = torch.flatten(x,1)
-
-        if self.fc1 is None:
-            flattned_size = x.shape[1]
-            self.fc1 = nn.Linear(flattned_size,128).to(x.device)
-            self.fc2 = nn.Linear(128,self.num_classes).to(x.device)
-
         x = nn.ReLU()(self.fc1(x))
         x = self.fc2(x)
+        return x
 
 device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
-print("using: {device}")
+print(f"using: {device}")
 
-test_data = ImageFolder(root = r"E:\unknown\py scripts\datasets\database for asl project (cuda)\asl_alphabet_test", transform=transform)
+test_data = ImageFolder(root = "/workspaces/ASL_Image_Recognizer/asl_alphabet_test", transform=transform)
 testloader  = DataLoader(test_data, batch_size=128,shuffle=True)
 
 model = ASLCNN(num_classes=29)
-model.load_state_dict(torch.load('/workspaces/ASL_Image_Recognizer/asl_model_size_64x64.pth'))
+model.load_state_dict(torch.load('/workspaces/ASL_Image_Recognizer/asl_model_size_64x64.pth',map_location=device))
 model.to(device)
 model.eval()  # switch to evaluation mode
 correct = 0
